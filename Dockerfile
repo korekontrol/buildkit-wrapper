@@ -3,8 +3,8 @@ WORKDIR /go/src/github.com/moby/buildkit
 COPY . .
 ENV CGO_ENABLED 0
 ENV GOOS linux
-RUN go build -a -ldflags '-extldflags "-static"' ./examples/build-using-dockerfile
+RUN go build -a -ldflags '-extldflags "-static"' ./examples/buildkit-build
 
 FROM scratch AS result
-COPY --from=gobuild-base /go/src/github.com/moby/buildkit/build-using-dockerfile /build
+COPY --from=gobuild-base /go/src/github.com/moby/buildkit/buildkit-build /buildkit-build
 CMD /build
