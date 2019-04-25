@@ -57,6 +57,10 @@ The resulting image is loaded to Docker.
 			Usage:  "export cache to local directory",
 			EnvVar: "BUILDKIT_LOCAL_CACHE_EXPORT",
 		},
+		cli.StringFlag{
+			Name: "progress",
+			Usage: "Set type of progress output",
+		},
 	}
 	app.Flags = append([]cli.Flag{
 		cli.StringSliceFlag{
@@ -82,10 +86,6 @@ The resulting image is loaded to Docker.
 		cli.StringSliceFlag{
 			Name:  "label",
 			Usage: "Set build labels",
-		},
-		cli.StringFlag{
-			Name: "progress",
-			Usage: "Set type of progress output",
 		},
 	}, dockerIncompatibleFlags...)
 	app.Action = action
@@ -123,10 +123,20 @@ func action(clicontext *cli.Context) error {
 	})
 	eg.Go(func() error {
 		var c console.Console
-		if cn, err := console.ConsoleFromFile(os.Stderr); err == nil {
-			c = cn
+		progressOpt := clicontext.String("progress")
+
+		switch progressOpt {
+		case "auto", "tty":
+			cf, err := console.ConsoleFromFile(os.Stderr)
+			if err != nil && progressOpt == "tty" {
+				return err
+			}
+			c = cf
+		case "plain":
+		default:
+			return errors.Errorf("invalid progress value : %s", progressOpt)
 		}
-		// not using shared context to not disrupt display but let is finish reporting errors
+
 		return progressui.DisplaySolveStatus(context.TODO(), "", c, os.Stdout, ch)
 	})
 	eg.Go(func() error {
@@ -185,9 +195,6 @@ func newSolveOpt(clicontext *cli.Context, w io.WriteCloser) (*client.SolveOpt, e
 			return nil, errors.Errorf("invalid label value %s", label)
 		}
 		frontendAttrs["label:"+kv[0]] = kv[1]
-	}
-	if progress := clicontext.String("progress"); progress != "" {
-		frontendAttrs["progress"] = progress
 	}
 
 	var cacheImports []client.CacheOptionsEntry
