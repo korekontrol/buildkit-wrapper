@@ -7,3 +7,4 @@ RUN go build -a -ldflags '-extldflags "-static"' ./examples/build-using-dockerfi
 
 FROM scratch AS result
 COPY --from=gobuild-base /go/src/github.com/moby/buildkit/build-using-dockerfile /build
+CMD /build
