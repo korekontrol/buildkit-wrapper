@@ -1,8 +1,9 @@
 FROM golang:1.12 AS gobuild-base
 WORKDIR /go/src/github.com/moby/buildkit
 COPY . .
-RUN go build ./examples/build-using-dockerfile
-RUN ls -la && false
+ENV CGO_ENABLED 0
+ENV GOOS linux
+RUN go build -a -ldflags '-extldflags "-static"' ./examples/build-using-dockerfile
 
 FROM scratch AS result
-COPY --from=gobuild-base build-using-dockerfile /build
+COPY --from=gobuild-base /go/src/github.com/moby/buildkit/build-using-dockerfile /build
