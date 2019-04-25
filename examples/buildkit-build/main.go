@@ -24,6 +24,7 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Name = "buildkit-build"
+	app.Usage = "Wrapper for buildkit for building containers in a way similar to docker"
 	app.UsageText = `buildkit-build [OPTIONS] PATH | URL | -`
 	app.Description = `
 build container using BuildKit, based on Dockerfile.
@@ -32,7 +33,7 @@ This command mimics behavior of "docker build" command so that you can easily ge
 This command is NOT the replacement of "docker build", and should NOT be used for building production images.
 It supports only limited set of options to docker.
 
-By default, the built image is loaded to Docker.
+The resulting image is loaded to Docker.
 `
 	dockerIncompatibleFlags := []cli.Flag{
 		cli.StringFlag{
@@ -47,9 +48,14 @@ By default, the built image is loaded to Docker.
 			EnvVar: "BUILDKIT_CLIENTSIDE_FRONTEND",
 		},
 		cli.StringFlag{
-			Name:   "local-cache",
-			Usage:  "use local cache directory",
-			EnvVar: "BUILDKIT_LOCAL_CACHE",
+			Name:   "local-cache-import",
+			Usage:  "import cache from local directory",
+			EnvVar: "BUILDKIT_LOCAL_CACHE_IMPORT",
+		},
+		cli.StringFlag{
+			Name:   "local-cache-export",
+			Usage:  "export cache to local directory",
+			EnvVar: "BUILDKIT_LOCAL_CACHE_EXPORT",
 		},
 	}
 	app.Flags = append([]cli.Flag{
@@ -185,18 +191,21 @@ func newSolveOpt(clicontext *cli.Context, w io.WriteCloser) (*client.SolveOpt, e
 	}
 
 	var cacheImports []client.CacheOptionsEntry
-	var cacheExports []client.CacheOptionsEntry
-	if localCache := clicontext.String("local-cache"); localCache != "" {
+	if localCacheImport := clicontext.String("local-cache-import"); localCacheImport != "" {
 		cacheImports = append(cacheImports, client.CacheOptionsEntry{
 			Type: "local",
-			Attrs: map[string]string {
-				"src": localCache,
+			Attrs: map[string]string{
+				"src": localCacheImport,
 			},
 		})
+	}
+
+	var cacheExports []client.CacheOptionsEntry
+	if localCacheExport := clicontext.String("local-cache-export"); localCacheExport != "" {
 		cacheExports = append(cacheExports, client.CacheOptionsEntry{
 			Type: "local",
 			Attrs: map[string]string {
-				"dest": localCache,
+				"dest": localCacheExport,
 			},
 		})
 	}
