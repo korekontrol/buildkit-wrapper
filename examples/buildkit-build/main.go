@@ -192,12 +192,16 @@ func newSolveOpt(clicontext *cli.Context, w io.WriteCloser) (*client.SolveOpt, e
 
 	var cacheImports []client.CacheOptionsEntry
 	if localCacheImport := clicontext.String("local-cache-import"); localCacheImport != "" {
-		cacheImports = append(cacheImports, client.CacheOptionsEntry{
-			Type: "local",
-			Attrs: map[string]string{
-				"src": localCacheImport,
-			},
-		})
+		if _, err := os.Stat(localCacheImport + "/index.json"); os.IsNotExist(err) {
+			logrus.Warn("Local cache import specified, but cache contents not found. Not importing local cache.")
+		} else {
+			cacheImports = append(cacheImports, client.CacheOptionsEntry{
+				Type: "local",
+				Attrs: map[string]string{
+					"src": localCacheImport,
+				},
+			})
+		}
 	}
 
 	var cacheExports []client.CacheOptionsEntry
