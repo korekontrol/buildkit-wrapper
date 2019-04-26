@@ -231,13 +231,13 @@ func newSolveOpt(clicontext *cli.Context, w io.WriteCloser) (*client.SolveOpt, e
 				},
 				Output: w,
 			},
-			{
-				// Containerd image store
-				Type: "image",
-				Attrs: map[string]string{
-					"name": clicontext.String("tag"),
-				},
-			},
+			//{
+			//	// Containerd image store
+			//	Type: "image",
+			//	Attrs: map[string]string{
+			//		"name": clicontext.String("tag"),
+			//	},
+			//},
 
 		},
 		LocalDirs:     localDirs,
