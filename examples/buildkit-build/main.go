@@ -61,6 +61,10 @@ The resulting image is loaded to Docker.
 			Name: "progress",
 			Usage: "Set type of progress output",
 		},
+		cli.BoolFlag{
+			Name:  "debug",
+			Usage: "enable debug output in logs",
+		},
 	}
 	app.Flags = append([]cli.Flag{
 		cli.StringSliceFlag{
@@ -88,9 +92,24 @@ The resulting image is loaded to Docker.
 			Usage: "Set build labels",
 		},
 	}, dockerIncompatibleFlags...)
+
 	app.Action = action
+
+	var debugEnabled bool
+	app.Before = func(context *cli.Context) error {
+		debugEnabled = context.GlobalBool("debug")
+		if debugEnabled {
+			logrus.SetLevel(logrus.DebugLevel)
+		}
+		return nil
+	}
+
 	if err := app.Run(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		if debugEnabled {
+			fmt.Fprintf(os.Stderr, "error: %+v\n", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		}
 		os.Exit(1)
 	}
 }
@@ -105,8 +124,8 @@ func action(clicontext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	pipeR, pipeW := io.Pipe()
-	solveOpt, err := newSolveOpt(clicontext, pipeW)
+	//pipeR, pipeW := io.Pipe()
+	solveOpt, err := newSolveOpt(clicontext, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -139,17 +158,28 @@ func action(clicontext *cli.Context) error {
 
 		return progressui.DisplaySolveStatus(context.TODO(), "", c, os.Stdout, ch)
 	})
-	eg.Go(func() error {
-		if err := loadDockerTar(pipeR); err != nil {
-			return err
-		}
-		return pipeR.Close()
-	})
+	//eg.Go(func() error {
+	//	if err := loadDockerTar(pipeR); err != nil {
+	//		return err
+	//	}
+	//	return pipeR.Close()
+	//})
 	if err := eg.Wait(); err != nil {
 		return err
 	}
-	logrus.Infof("Loaded the image %q to Docker.", clicontext.String("tag"))
+	logrus.Infof("buildkit: succesfull build, image tag: %q.", clicontext.String("tag"))
 	return nil
+}
+
+func normalizeImageName(name string) string {
+	result := name
+	if strings.Count(name, "/") == 0 {
+		result = "library/" + result
+	}
+	if strings.Count(name, "/") == 0 {
+		result = "docker.io/" + result
+	}
+	return result
 }
 
 func newSolveOpt(clicontext *cli.Context, w io.WriteCloser) (*client.SolveOpt, error) {
@@ -223,21 +253,22 @@ func newSolveOpt(clicontext *cli.Context, w io.WriteCloser) (*client.SolveOpt, e
 
 	return &client.SolveOpt{
 		Exports: []client.ExportEntry{
-			{
-				// Export docker image to stdout, will be imported by docker with pipe " | docker load"
-				Type: "docker",
-				Attrs: map[string]string{
-					"name": clicontext.String("tag"),
-				},
-				Output: w,
-			},
 			//{
-			//	// Containerd image store
-			//	Type: "image",
+			//	// Export docker image to stdout, will be imported by docker with pipe " | docker load"
+			//	Type: "docker",
 			//	Attrs: map[string]string{
 			//		"name": clicontext.String("tag"),
 			//	},
+			//	Output: w,
 			//},
+			// type=image,name=docker.io/username/image,push=true
+			{
+				// Containerd image store
+				Type: "image",
+				Attrs: map[string]string{
+					"name": normalizeImageName(clicontext.String("tag")),
+				},
+			},
 
 		},
 		LocalDirs:     localDirs,

@@ -1,21 +1,20 @@
 ## BuildKit wrapper
+This wrapper uses internal buildkit API and enables more customised build process than offered by `docker build`.
+It is using `containerd` for storing outputs (images). Such approach allows importing and exporting of build cache (using `buldctl` command),
+which can be useful on distributed build systems, which can benefit from layer caching.
+
 
 ### Usage:
 
 ##### Start buildkit container:
 
 ```
-# Start buildkit container
 docker run -d --rm --privileged \
-  -p 1234:1234 --name buildkit moby/buildkit:latest \
-  --addr tcp://0.0.0.0:1234 --oci-worker-platform linux/amd64
-```
-To run buildkit with `containerd` - use the following command to start `buildkit` container instead:
-```
-docker run -d --rm --privileged \
+  -v /run/buildkit:/run/buildkit
   -v /var/lib/buildkit:/var/lib/buildkit \
-  -v /var/lib/containerd:/var/lib/containerd \
   -v /run/containerd:/run/containerd \
+  -v /var/lib/containerd:/var/lib/containerd \
+  -v /tmp:/tmp \
   --name buildkit moby/buildkit:latest \
   --oci-worker=false --containerd-worker=true
 ```
@@ -28,15 +27,22 @@ docker cp buildkit-wrapper:/buildkit-build .
 docker rm buildkit-wrapper
 ```
 
-##### Configure buildkit endpoint
+##### Build an image
 ```
-export BUILDKIT_HOST=docker://buildkit
-```
-
-##### Build a container
-```
+export BUILDKIT_HOST=tcp://0.0.0.0:1234
 ./buildkit-build -t <image_name> (...)
 ```
+This process is executed using standalone buildkit, running in a container. It is not the same as
+building container using buildkit bundled in docker.
+Note that resulting container will be persisted in local containerd image repository,
+so it will not be available to docker. If you want to use it in docker, you need to export/import image.
+
+##### Export containerd image into docker
+```
+ctr --namespace buildkit images export - <image_name> \
+  | docker image import - <image_name>
+```
+
 
 ### Syntax
 
