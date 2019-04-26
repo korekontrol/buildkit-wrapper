@@ -224,12 +224,21 @@ func newSolveOpt(clicontext *cli.Context, w io.WriteCloser) (*client.SolveOpt, e
 	return &client.SolveOpt{
 		Exports: []client.ExportEntry{
 			{
-				Type: "docker", // TODO: use containerd image store when it is integrated to Docker
+				// Export docker image to stdout, will be imported by docker with pipe " | docker load"
+				Type: "docker",
 				Attrs: map[string]string{
 					"name": clicontext.String("tag"),
 				},
 				Output: w,
 			},
+			{
+				// Containerd image store
+				Type: "image",
+				Attrs: map[string]string{
+					"name": clicontext.String("tag"),
+				},
+			},
+
 		},
 		LocalDirs:     localDirs,
 		Frontend:      frontend,
