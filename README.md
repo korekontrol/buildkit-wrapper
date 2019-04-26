@@ -1,7 +1,7 @@
 ## BuildKit wrapper
 This wrapper uses internal buildkit API and enables more customised build process than offered by `docker build`.
-It is using `containerd` for storing outputs (images). Such approach allows importing and exporting of build cache (using `buldctl` command),
-which can be useful on distributed build systems, which can benefit from layer caching.
+It is using `containerd` for storing outputs (images). Such approach allows importing and exporting contents of build cache layers,
+which can be useful on distributed build systems.
 
 
 ### Usage:
@@ -28,14 +28,26 @@ docker rm buildkit-wrapper
 ```
 
 ##### Build an image
+Setup buildkit endpoint configuration:
 ```
 export BUILDKIT_HOST=tcp://0.0.0.0:1234
+```
+For import or export cache, add environmental variables:
+
+```
+export BUILDKIT_LOCAL_CACHE_IMPORT=/tmp/docker-layers
+export BUILDKIT_LOCAL_CACHE_EXPORT=/tmp/docker-layers
+```
+Run the build:
+
+```
 ./buildkit-build -t <image_name> (...)
 ```
 This process is executed using standalone buildkit, running in a container. It is not the same as
 building container using buildkit bundled in docker.
 Note that resulting container will be persisted in local containerd image repository,
 so it will not be available to docker. If you want to use it in docker, you need to export/import image.
+
 
 ##### Export containerd image into docker
 ```
